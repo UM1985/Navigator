@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import axios from "axios";
 import "react-toastify/dist/ReactToastify.css";
@@ -10,8 +10,9 @@ const AddProduct = () => {
   const { register, handleSubmit, reset, setValue } = useForm();
   const [products, setProducts] = useState([]);
   const [editId, setEditId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("");
 
-  // Load products from API
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -26,19 +27,16 @@ const AddProduct = () => {
     }
   };
 
-  // Add or Update product
   const onSubmit = async (data) => {
     try {
       if (editId) {
-        // Update existing product
         await axios.put(`${API_URL}/${editId}`, data);
         toast.success("✅ Product updated successfully!");
       } else {
-        // Add new product
         await axios.post(API_URL, data);
         toast.success("🎉 Product added successfully!");
       }
-      fetchProducts(); // refresh list
+      fetchProducts();
       reset();
       setEditId(null);
     } catch (error) {
@@ -47,7 +45,6 @@ const AddProduct = () => {
     }
   };
 
-  // Delete product
   const deleteProduct = async (id) => {
     try {
       await axios.delete(`${API_URL}/${id}`);
@@ -59,14 +56,33 @@ const AddProduct = () => {
     }
   };
 
-  // Edit product (load values into form)
   const editProduct = (product) => {
     setEditId(product.id);
     setValue("name", product.name);
     setValue("price", product.price);
     setValue("category", product.category);
     setValue("image", product.image);
+    setValue("discount", product.discount);
   };
+
+  // Filter and sort products
+  const filteredProducts = useMemo(() => {
+    let filtered = products.filter((p) =>
+      p.name.toLowerCase().includes(search.toLowerCase())
+    );
+
+    if (sortBy === "priceAsc") {
+      filtered.sort((a, b) => a.price - b.price);
+    } else if (sortBy === "priceDesc") {
+      filtered.sort((a, b) => b.price - a.price);
+    } else if (sortBy === "nameAsc") {
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === "nameDesc") {
+      filtered.sort((a, b) => b.name.localeCompare(a.name));
+    }
+
+    return filtered;
+  }, [products, search, sortBy]);
 
   return (
     <div className="container my-5 d-flex flex-column align-items-center">
@@ -122,6 +138,7 @@ const AddProduct = () => {
               <option value="Other">Other</option>
             </select>
           </div>
+
           <div className="mb-3">
             <label htmlFor="discount" className="form-label fw-semibold">
               Discount
@@ -163,59 +180,85 @@ const AddProduct = () => {
         </form>
       </div>
 
-      {/* Show products */}
-      <div className="row mt-4 w-100">
-  {products.map((product) => (
-    <div key={product.id} className="col-md-3 mb-3">
-      <div className="card h-100 shadow-sm">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="card-img-top"
-          style={{ height: "200px", objectFit: "contain" }}
-        />
-        <div className="card-body">
-          <h5 className="card-title">{product.name}</h5>
 
-          {/* Price with discount */}
-          {product.discount ? (
-            <p className="card-text">
-              <span className="text-muted text-decoration-line-through me-2">
-                ₹{product.price}
-              </span>
-              <span className="fw-bold text-success">
-                ₹{product.price - (product.price * product.discount) / 100}
-
-              </span>
-            </p>
-          ) : (
-            <p className="card-text fw-bold">₹{product.price}</p>
-          )}
-
-          <p className="badge bg-info">{product.category}</p>
-
-          <div className="d-flex justify-content-between mt-3">
-            <button
-              className="btn btn-warning btn-sm"
-              onClick={() => editProduct(product)}
-            >
-              Edit
-            </button>
-            <button
-              className="btn btn-danger btn-sm"
-              onClick={() => deleteProduct(product.id)}
-            >
-              Delete
-            </button>
-          </div>
+        <div className="mt-5 p-5 text-center">
+          <h1 className="mt-5 p-5 text-primary">Available Products</h1>
+        </div>
+      {/* Search and Sort */}
+      <div className="row mt-4 w-100 mb-3">
+        <div className="col-md-6 mb-2">
+          <input
+            type="text"
+            className="form-control text-bg-success text-light"
+            placeholder="Search by product name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="col-md-6 mb-2">
+          <select
+            className="form-select text-bg-success"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="">Sort By</option>
+            <option value="priceAsc">Price: Low → High</option>
+            <option value="priceDesc">Price: High → Low</option>
+            <option value="nameAsc">Name: A → Z</option>
+            <option value="nameDesc">Name: Z → A</option>
+          </select>
         </div>
       </div>
-    </div>
-  ))}
-</div>
 
+      {/* Show products */}
+      <div className="row mt-2 w-100">
+        {filteredProducts.map((product) => (
+          <div key={product.id} className="col-md-3 mb-3">
+            <div className="card h-100 shadow-sm">
+              <img
+                src={product.image}
+                alt={product.name}
+                className="card-img-top"
+                style={{ height: "200px", objectFit: "contain" }}
+              />
+              <div className="card-body">
+                <h5 className="card-title">{product.name}</h5>
 
-      {/* Toast Notifications */}
+                {product.discount ? (
+                  <p className="card-text">
+                    <span className="text-muted text-decoration-line-through me-2">
+                      ₹{product.price}
+                    </span>
+                    <span className="fw-bold text-success">
+                      ₹{product.price - (product.price * product.discount) / 100}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="card-text fw-bold">₹{product.price}</p>
+                )}
+
+                <p className="badge bg-info">{product.category}</p>
+
+                <div className="d-flex justify-content-between mt-3">
+                  <button
+                    className="btn btn-warning btn-sm"
+                    onClick={() => editProduct(product)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => deleteProduct(product.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <ToastContainer position="top-center" autoClose={2000} />
     </div>
   );

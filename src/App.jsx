@@ -3,7 +3,6 @@ import AddProduct from "./layout/AddProduct";
 import Navbar from "./component/Navbar";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Error from "./component/Error";
-
 const App = () => {
   return (
     <>
